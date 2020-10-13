@@ -4,7 +4,7 @@ use warnings;
 use 5.024;
 no warnings 'experimental';
 
-my $CurrPack = 'nameofcurrentpackage';
+my $CurrPack = 'directory';
 my $Owner = 'user:group';
 
 my $WD = `pwd`;
@@ -23,6 +23,9 @@ given ( shift @ARGV ) {
     }
     when (/^-*i$/) {
         InitF( $ARGV[0] );
+    }
+    when (/^-*u$/) {
+        UpdateF( @ARGV );
     }
     when (/^-*s$/) {
         SOPM( @ARGV );
@@ -50,6 +53,7 @@ sub Usage {
     print "Usage: ./pp [command] [file(s)]\n".
           "\ti\t- Initialize files of cloned package repo (default command for directories)\n".
           "\tp\t- Prepare files (default command for file)\n".
+          "\tu\t- Update files to newer OTOBO/OTRS version\n".
           "\ts\t- Create sopm file\n".
           "\tc\t- Clean files or whole repo\n".
           "\th\t- Show this usage explanation\n";
@@ -235,6 +239,78 @@ sub PrepF {
     if ( $Owner ) {
         print "Setting Ownership to $Owner\n";
         system "chown -R $Owner $Pack";
+    }
+
+    return 1;
+}
+
+#+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+#
+
+sub UpdateF {
+
+    my $Pack = $_[0] || $CurrPack;
+    if ( !$Pack ) {
+        die "Package directory needed.\n";
+    }
+    if ( !-e $Pack ) {
+        die "'$Pack' does not exist.\n";
+    }
+
+    my @FileList = `find $Pack/Custom $Pack/var/http/htdocs -type f -print`;
+
+    FILE:
+    for my $File ( @FileList ) {
+        chomp($File);
+        my $OrigFile = $File;
+        $OrigFile =~ s/^\.?\/?$Pack(:?\/Custom)?\/?//;
+        
+        if ( !-e $OrigFile ) {
+            if ( $File =~ /Custom/ ) {
+                warn "'$File' seems to be in Custom directory, but could not find original file '$OrigFile'."
+            }
+
+            next FILE;
+        }
+
+        my $CurrentCommit = `git --no-pager log -n 1 --pretty=format:%H -- $OrigFile` || '';
+        my $LastCommit = `grep -P '^(#|//) \\\$origin:' $File`;
+
+        # do nothing if the file is still up to date
+        next FILE if ( $LastCommit && $LastCommit =~ /$CurrentCommit/ );
+
+        # else vimdiff and change the commit line
+        print "vimdiff $OrigFile $File #and update \$origin\n";
+        system "vimdiff $OrigFile $File; mv $File $File.tmp.shouldnotsee";
+
+        open my $in,  "< $File.tmp.shouldnotsee" or ( warn "Could not open $File.tmp.shouldnotsee to read. Please check!\n" && next FILE );
+        open my $out, "> $File" or ( warn "Could not open $File to write. Please check!\n" && next FILE );
+        while ( <$in> ) {
+            print $out $_;
+            if ( /^# Copyright/ ) {
+                until ( /^# --\s*$/ || !$_ ) {
+                    $_ = <$in>;
+                    print $out $_ if defined $_;
+                }
+                if ( $_ ) {
+                    print $out "# \$origin: $Program - $CurrentCommit - $OrigFile\n# --\n";
+                }
+
+                # check whether $origin was already present
+                $_ = <$in>;
+                if ( /\$origin/ ) {
+                    # skip the old origin and one "# --"
+                    $_ = <$in>;
+                }
+                else {
+                    print $out $_;
+                }
+
+                while ( <$in> ) { print $out $_ }
+            }
+        }
+
+        close $in;
+        system "rm $File.tmp.shouldnotsee";
     }
 
     return 1;
