@@ -256,7 +256,7 @@ sub UpdateF {
         die "'$Pack' does not exist.\n";
     }
 
-    my @FileList = `find $Pack/Custom $Pack/var/http/htdocs -type f -print`;
+    my @FileList = `find $Pack/Custom $Pack/var/httpd/htdocs -type f -print`;
 
     FILE:
     for my $File ( @FileList ) {
@@ -293,6 +293,27 @@ sub UpdateF {
                 }
                 if ( $_ ) {
                     print $out "# \$origin: $Program - $CurrentCommit - $OrigFile\n# --\n";
+                }
+
+                # check whether $origin was already present
+                $_ = <$in>;
+                if ( /\$origin/ ) {
+                    # skip the old origin and one "# --"
+                    $_ = <$in>;
+                }
+                else {
+                    print $out $_;
+                }
+
+                while ( <$in> ) { print $out $_ }
+            }
+            if ( /^\/\/ Copyright/ ) {
+                until ( /^\/\/ --\s*$/ || !$_ ) {
+                    $_ = <$in>;
+                    print $out $_ if defined $_;
+                }
+                if ( $_ ) {
+                    print $out "// \$origin: $Program - $CurrentCommit - $OrigFile\n// --\n";
                 }
 
                 # check whether $origin was already present
