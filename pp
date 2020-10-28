@@ -5,7 +5,7 @@ use 5.024;
 no warnings 'experimental';
 
 my $CurrPack = 'directory';
-my $Owner = 'user:group';
+my $Owner = 'user:www-data';
 
 my $WD = `pwd`;
 chomp($WD);
@@ -307,7 +307,7 @@ sub UpdateF {
 
                 while ( <$in> ) { print $out $_ }
             }
-            if ( /^\/\/ Copyright/ ) {
+            elsif ( /^\/\/ Copyright/ ) {
                 until ( /^\/\/ --\s*$/ || !$_ ) {
                     $_ = <$in>;
                     print $out $_ if defined $_;
