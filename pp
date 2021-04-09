@@ -4,13 +4,18 @@ use warnings;
 use 5.024;
 no warnings 'experimental';
 
+#+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Settings ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+#
 my $CurrPack = 'directory';
-my $Owner = 'user:www-data';
+my $User = '';              # optional
+my $Group = 'www-data';
+#+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+#
 
-my $WD = `pwd`;
-chomp($WD);
+my $WD      = `pwd`;
+chomp( $WD );
+my $Owner   = $User || `whoami`;
+chomp( $Owner );
+$Owner     .= ":$Group";
 my $Program = GetProgram();
-
 
 if ( !@ARGV ) {
     InitF();
@@ -18,6 +23,9 @@ if ( !@ARGV ) {
 }
 
 given ( shift @ARGV ) {
+    when (/^-*d$/) {
+        SetPack( @ARGV );
+    }
     when (/^-*p$/) {
         PrepF( @ARGV );
     }
@@ -56,6 +64,7 @@ sub Usage {
           "\tu\t- Update files to newer OTOBO/OTRS version\n".
           "\ts\t- Create sopm file\n".
           "\tc\t- Clean files or whole repo\n".
+          "\td\t- Set the directory (warning: changes file)\n".
           "\th\t- Show this usage explanation\n";
 
     exit 0;
@@ -440,4 +449,32 @@ sub GetProgram {
     }
 
     return '';
+}
+
+#+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+#
+
+sub SetPack {
+    if ( !$_[0] || !-d $_[0] ) {
+        $_[0] .= '';
+        die "Please provide the directory of the package. '$_[0]' is invalid.\n";
+    }
+
+    if ( -e "$0.tmp_setpack" ) {
+        die "$0.tmp_setpack exists. Cannot execute.\n";
+    }
+
+    open my $orig, "< $0" or die "Cannot open $0 to read.\n";
+    open my $new, "> $0.tmp_setpack" or die "Cannot open $0.tmp_setpack to write.\n";
+
+    WHILE:
+    while ( <$orig> ) {
+        if ( /^\s*my\s+\$CurrPack/ ) {
+            print $new "my \$CurrPack = '$_[0]';\n";
+            last WHILE;
+        }
+        print $new $_;
+    }
+    while ( <$orig> ) { print $new $_ }
+
+    system "mv $0.tmp_setpack $0; chmod +x $0;";
 }
