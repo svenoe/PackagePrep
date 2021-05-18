@@ -417,8 +417,9 @@ sub SOPM {
 '<?xml version="1.0" encoding="utf-8" ?>
 <otobo_package version="1.0">
     <Name>'.$Name.'</Name>
-    <Vendor>Rother OSS GmbH</Vendor>
+    <Version>10.0.0</Version>
     <Framework>10.0.x</Framework>
+    <Vendor>Rother OSS GmbH</Vendor>
     <URL>https://rother-oss.com/</URL>
     <License>GNU GENERAL PUBLIC LICENSE Version 3, 29 June 2007</License>
     <Description Lang="en">..</Description>
@@ -428,7 +429,7 @@ sub SOPM {
     for my $File ( @FileList ) {
         chomp($File);
         $File =~ s/^\.?\/?$Pack\/+//;
-        print $sopm "        <File Permission='644' Location='$File' />\n";
+        print $sopm "        <File Permission=\"660\" Location=\"$File\" />\n";
     }
 
     print $sopm
