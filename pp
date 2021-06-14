@@ -65,7 +65,25 @@ sub Usage {
           "\ts\t- Create sopm file\n".
           "\tc\t- Clean files or whole repo\n".
           "\td\t- Set the directory (warning: changes file)\n".
-          "\th\t- Show this usage explanation\n";
+          "\th\t- Show this usage explanation\n".
+          "\n".
+          "Precondition:\n".
+          "  We and also the package directory are directly located in \$OTOBOHome.\n".
+          "\n".
+          "Examples for a new package (newpack):\n".
+          "  - start by setting the correct directory (only needs to be executed once):\n".
+          "      ./pp -d newpack\n".
+          "  - create a completely new file in Kernel (touches, links and sets rights):\n".
+          "      ./pp Kernel/System/MyMod.pm\n".
+          "  - create a new file from an existing one in Kernel (links and sets rights):\n".
+          "      mkdir -p newpack/Kernel/System; cp Kernel/System/JSON.pm newpack/Kernel/System/MyMod.pm; ./pp Kernel/System/MyMod.pm\n".
+          "  - create a new file from an existing one in Custom or var (copies, sets \$origin, links etc., and creates a backup in case of var/):\n".
+          "      ./pp Kernel/System/JSON.pm\n".
+          "  - create initial sopm (description and later changes have to be done manually):\n".
+          "      ./pp -s NewPack\n".
+          "  - clean up:\n".
+          "      ./pp -c\n".
+          "";
 
     exit 0;
 }
