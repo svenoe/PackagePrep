@@ -10,6 +10,7 @@ my $User = '';              # optional
 my $Group = 'www-data';
 #+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+#
 
+$CurrPack  =~ s/\/$//;
 my $WD      = `pwd`;
 chomp( $WD );
 my $Owner   = $User || `whoami`;
@@ -382,11 +383,17 @@ sub CleanF {
         chomp($File);
         $File =~ s/^\.?\/?$Pack\/+//;
         
-        print "Unlinking '$File'.\n";
-        system "unlink $File";
+        if ( -l $File ) {
+            print "Deleting link '$File' and restoring pp_backup if it is present.\n";
+            system "rm $File";
 
-        if ( -e "$File.pp_backup" ) {
-            system "mv $File.pp_backup $File";
+            if ( -e "$File.pp_backup" ) {
+                system "mv $File.pp_backup $File";
+            }
+        }
+
+        elsif ( -e $File ) {
+            warn "Skipping existing file '$File' as it is not a softlink.\n";
         }
     }
 
