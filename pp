@@ -19,8 +19,7 @@ $Owner     .= ":$Group";
 my $Program = GetProgram();
 
 if ( !@ARGV ) {
-    InitF();
-    exit;
+    Usage();
 }
 
 given ( shift @ARGV ) {
@@ -102,6 +101,11 @@ sub InitF {
         die "'$Pack' does not exist or is not a directory.\n";
     }
 
+    my $IsInstalled;
+    if ( $Program eq 'otobo' ) {
+        $IsInstalled = PrepareInstalled( Mode => 'Init' );
+    }
+
     # needed for correct links
     $Pack = $Pack =~ /^\// ? $Pack : "$WD/$Pack";
     if ( !-d $Pack ) {
@@ -125,7 +129,7 @@ sub InitF {
         }
 
         print "Linking '$File'.\n";
-        
+
         my $Dir = $File;
         if ( $Dir =~ s/\/[^\/]+$// ) {
             system "mkdir -p $Dir";
@@ -206,7 +210,7 @@ sub PrepF {
                     warn "'Custom/$File' already exists - check please. Skipping...\n";
                     next FILE;
                 }
-                
+
                 print "Linking 'Custom/$File' to '$Pack/Custom/$File'";
                 my $Dir = "Custom/$File";
                 $Dir =~ s/\/[^\/]+$//;
@@ -291,7 +295,7 @@ sub UpdateF {
         chomp($File);
         my $OrigFile = $File;
         $OrigFile =~ s/^\.?\/?$Pack(:?\/Custom)?\/?//;
-        
+
         if ( !-e $OrigFile ) {
             if ( $File =~ /Custom/ ) {
                 warn "'$File' seems to be in Custom directory, but could not find original file '$OrigFile'."
@@ -382,7 +386,7 @@ sub CleanF {
     for my $File ( @FileList ) {
         chomp($File);
         $File =~ s/^\.?\/?$Pack\/+//;
-        
+
         if ( -l $File ) {
             print "Deleting link '$File' and restoring pp_backup if it is present.\n";
             system "rm $File";
@@ -395,6 +399,11 @@ sub CleanF {
         elsif ( -e $File ) {
             warn "Skipping existing file '$File' as it is not a softlink.\n";
         }
+    }
+
+    my $IsInstalled;
+    if ( $Program eq 'otobo' ) {
+        $IsInstalled = PrepareInstalled( Mode => 'Clean' );
     }
 
     print "To complete this step, you probably want to run:\nbin/otobo.Console.pl Maint::Config::Rebuild --cleanup\n";
@@ -438,7 +447,7 @@ sub SOPM {
 
     open my $sopm, "> $Pack/$Name.sopm" or die "Could not open $Pack/$Name.sopm to write:\n$!\n";
 
-    print $sopm 
+    print $sopm
 '<?xml version="1.0" encoding="utf-8" ?>
 <otobo_package version="1.0">
     <Name>'.$Name.'</Name>
@@ -503,4 +512,97 @@ sub SetPack {
     while ( <$orig> ) { print $new $_ }
 
     system "mv $0.tmp_setpack $0; chmod +x $0;";
+}
+
+#+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+#
+
+sub PrepareInstalled {
+    my %Param = @_;
+
+    my $SOPM = `find $CurrPack -name *.sopm`;
+
+    return if !$SOPM;
+
+    chomp $SOPM;
+
+    use lib '.';
+    use lib 'Kernel/cpan-lib';
+    use lib 'Custom';
+
+    eval {
+        require Kernel::System::ObjectManager;
+    };
+    return if $@;
+
+    local $Kernel::OM = Kernel::System::ObjectManager->new();
+
+    my $MainObject    = $Kernel::OM->Get('Kernel::System::Main');
+    my $PackageObject = $Kernel::OM->Get('Kernel::System::Package');
+
+    my $FileString  = $MainObject->FileRead( Location => $SOPM );
+    my %Structure   = $PackageObject->PackageParse( String => $FileString );
+
+    return if !$Structure{Name}{Content};
+
+    my $IsInstalled = $PackageObject->PackageIsInstalled( Name => $Structure{Name}{Content} );
+
+    return if !$IsInstalled;
+
+    print "$Structure{Name}{Content} is already installed.\n";
+
+    my $OrigPackage;
+    my %OrigStructure;
+    my $DeployOK;
+    INST:
+    for my $Package ( $PackageObject->RepositoryList() ) {
+        next INST if $Package->{Name}->{Content} ne $Structure{Name}{Content};
+
+        $DeployOK = $PackageObject->DeployCheck(
+            Name    => $Package->{Name}->{Content},
+            Version => $Package->{Version}->{Content},
+        );
+
+        # get package
+        $OrigPackage   = $PackageObject->RepositoryGet(
+            Name    => $Package->{Name}->{Content},
+            Version => $Package->{Version}->{Content},
+            Result  => 'SCALAR',
+        );
+        %OrigStructure = $PackageObject->PackageParse( String => $OrigPackage );
+
+        last INST;
+    }
+
+    given ( $Param{Mode} ) {
+        when ( 'Init' ) {
+            if ( !$DeployOK ) {
+                warn "$Structure{Name}{Content} is not installed correctly. Not changing it.\n";
+
+                return;
+            }
+
+            print "Deleting installed package files to prepare for substitution.\n";
+            for my $File ( $OrigStructure{Filelist}->@* ) {
+                system "rm $File->{Location}";
+            }
+
+            return 1;
+        }
+        when ( 'Clean' ) {
+            if ( $DeployOK ) {
+                print "$Structure{Name}{Content} is already installed correctly. Not changing it.\n";
+
+                return;
+            }
+
+            print "Reinstall original package.\n";
+
+            return $PackageObject->PackageReinstall( String => $OrigPackage );
+        }
+        default {
+            warn "No orders given.\n";
+        }
+    }
+
+    return;
 }
