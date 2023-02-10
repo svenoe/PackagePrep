@@ -519,7 +519,7 @@ sub SetPack {
 sub PrepareInstalled {
     my %Param = @_;
 
-    my $SOPM = `find $CurrPack -name *.sopm`;
+    my $SOPM = `find $CurrPack -name \\*.sopm`;
 
     return if !$SOPM;
 
