@@ -73,7 +73,7 @@ sub Usage {
           "Examples for a new package (newpack):\n".
           "  - start by setting the correct directory (only needs to be executed once):\n".
           "      ./pp -d newpack\n".
-          "  - create a completely new file in Kernel (touches, links and sets rights):\n".
+          "  - create a completely new file in Kernel (touches, links, sets rights and prefills if template can be derived from path):\n".
           "      ./pp Kernel/System/MyMod.pm\n".
           "  - create a new file from an existing one in Kernel (links and sets rights):\n".
           "      mkdir -p newpack/Kernel/System; cp Kernel/System/JSON.pm newpack/Kernel/System/MyMod.pm; ./pp Kernel/System/MyMod.pm\n".
@@ -151,6 +151,7 @@ sub InitF {
 sub PrepF {
     my @Files;
     my $Pack;
+    FILE:
     for my $File ( @_ ) {
         if ( -e $File && -d $File ) {
             if ( $Pack ) {
@@ -265,6 +266,287 @@ sub PrepF {
                 system "mkdir -p $Pack/$Dir";
             }
             system "touch $Pack/$File; ln -s $Pack/$File $File";
+            my $Template;
+            # TODO Think about default cases for inner branches
+            given ( $File ) {
+                when ( /Kernel\// ) {
+                    given ( $_ ) {
+                        when ( /\/System\// ) {
+                            $Template = 'System';
+                        }
+                        when ( /\/Config\/Files\/XML\// ) {
+                            $Template = 'Config';
+                        }
+                        when ( /\/Output\/HTML\/Templates\// ) {
+                            $Template = 'Template';
+                        }
+                        default {
+                            $Template = 'Module';
+                        }
+                    }
+                }
+                when ( /var\/httpd\/htdocs\// ) {
+                    given ( $_ ) {
+                        when ( /\/js\// ) {
+                            $Template = 'JS';
+                        }
+                        when ( /\/skins\// ) {
+                            $Template = 'CSS';
+                        }
+                    }
+                }
+                when ( /scripts\// ) {
+                    when ( /\/test\/Selenium\// ) {
+                        $Template = 'SeleniumTest';
+                    }
+                    when ( /\/test\/(?!Selenium)/ ) {
+                        $Template = 'UnitTest';
+                    }
+                }
+                default {
+                    print "Couldn't derive Template Type from Path. Skipping Prefilling.\n";
+                    return 1;
+                }
+            }
+            print "Using Template $Template to prefill the touched file.\n";
+            my $Copyright = <<'COPYRIGHT';
+--
+OTOBO is a web-based ticketing system for service organisations.
+--
+Copyright (C) 2001-2020 OTRS AG, https://otrs.com/
+Copyright (C) 2019-<current_year> Rother OSS GmbH, https://otobo.de/
+--
+This program is free software: you can redistribute it and/or modify it under
+the terms of the GNU General Public License as published by the Free Software
+Foundation, either version 3 of the License, or (at your option) any later version.
+This program is distributed in the hope that it will be useful, but WITHOUT
+ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+You should have received a copy of the GNU General Public License
+along with this program. If not, see <https://www.gnu.org/licenses/>.
+--
+COPYRIGHT
+            my (undef, undef, undef, undef, undef, $CurrentYear) = localtime();
+            $CurrentYear+= 1900;
+            $Copyright =~ s/<current_year>/$CurrentYear/;
+            my $Boilerplate = '';
+            my $StartCode = '';
+            given ( $Template ) {
+                when ( /^Module$/i ) {
+                    $Copyright =~ s/^/# /mg;
+                    $Boilerplate = <<'BOILERPLATE';
+package <package>;
+
+use strict;
+use warnings;
+
+# core modules
+
+# CPAN modules
+
+# OTOBO modules
+
+our $ObjectManagerDisabled = 1;
+BOILERPLATE
+                    my $Package = $File =~ s/\//::/gr;
+                    $Package =~ s/\.pm$//;
+                    $Boilerplate =~ s/<package>/$Package/;
+                    $StartCode = <<'STARTCODE';
+sub new {
+my ( $Type, %Param ) = @_;
+
+# allocate new hash for object
+my $Self = {%Param};
+bless( $Self, $Type );
+
+return $Self;
+}
+
+sub Run {
+my ( $Self, %Param ) = @_;
+}
+
+1;
+STARTCODE
+
+                }
+                when ( /^System$/i ) {
+                    $Copyright =~ s/^/# /mg;
+                    $Boilerplate = <<'BOILERPLATE';
+package <package>;
+
+use strict;
+use warnings;
+
+# core modules
+
+# CPAN modules
+
+# OTOBO modules
+
+our @ObjectDependencies = (
+
+);
+
+=head1 NAME
+
+[name_placeholder]
+
+=head1 DESCRIPTION
+
+[description_placeholder]
+
+=head1 PUBLIC INTERFACE
+
+=head2 new()
+
+create an object. Do not use it directly, instead use:
+
+my $<libname>Object = $Kernel::OM->Get('<package>');
+
+=cut
+BOILERPLATE
+                    my $Package = $File =~ s/\//::/gr;
+                    $Package =~ s/\.pm$//;
+                    $Boilerplate =~ s/<package>/$Package/g;
+                    my $LibName = $File =~ s/(^.+\/|\.pm$)//gr;
+                    $Boilerplate =~ s/<libname>/$LibName/;
+                    $StartCode = <<'STARTCODE';
+sub new {
+my ( $Type, %Param ) = @_;
+
+# allocate new hash for object
+my $Self = {%Param};
+bless( $Self, $Type );
+
+return $Self;
+}
+
+sub Run {
+my ( $Self, %Param ) = @_;
+}
+
+1;
+STARTCODE
+                }
+                when ( /^Config$/i ) {
+                    $Copyright = '';
+                    $Boilerplate = <<'BOILERPLATE';
+<?xml version="1.0" encoding="utf-8" ?>
+<otobo_config version="2.0" init="[placeholder]">
+<Setting Name="" Required="" Valid="" ConfigLevel="">
+    <Description Translatable="1"></Description>
+    <Navigation></Navigation>
+    <Value>
+    </Value>
+</Setting>
+</otobo_config>
+BOILERPLATE
+                }
+                when ( /^Template$/i ) {
+                    $Copyright =~ s/^/# /mg;
+                }
+                when ( /^JS$/i ) {
+                    $Copyright =~ s/^/\/\/ /mg;
+                    $Boilerplate = <<'BOILERPLATE';
+"use strict";
+
+var <base_object> = <base_object> || {};
+<further_objects>
+BOILERPLATE
+                    # omit path
+                    ( my $FileShort ) = grep { /\.js$/ } ( split( '\/', $File ) );
+                    my @MemberOf = split( '\.', $FileShort );
+                    # remove '.js'
+                    pop @MemberOf;
+                    my $CurrentObject = join( '.', @MemberOf );
+                    my $Base = shift @MemberOf;
+                    $Boilerplate =~ s/<base_object>/$Base/g;
+                    my $FurtherObjects = join( "\n", map {
+                        $Base .= ".$_";
+                        "$Base = $Base || {};"
+                    } @MemberOf[0 .. $#MemberOf - 1] );
+                    $Boilerplate =~ s/<further_objects>/$FurtherObjects/;
+                    $StartCode = <<'STARTCODE';
+/**
+* @namespace <current_object>
+* @memberof <member>
+* @author
+* @description
+*      [description_placeholder]
+*/
+<current_object> = (function (TargetNS) {
+
+    Core.Init.RegisterNamespace(TargetNS, 'APP_MODULE');
+
+    return TargetNS;
+}(<current_object> || {}));
+STARTCODE
+                    $StartCode =~ s/<current_object>/$CurrentObject/g;
+                    $StartCode =~ s/<member>/$Base/;
+                }
+                when ( /^CSS$/i ) {
+                    $Copyright =~ s/^--\n/\/\* /;
+                    $Copyright =~ s/--$/\*\//;
+                    $Copyright =~ s/--//g;
+                    $Boilerplate = <<'BOILERPLATE';
+/**
+* @package     Skin "Default"
+* @section     [placeholder]
+* @subsection  [placeholder]
+*/
+BOILERPLATE
+                }
+                when ( /^UnitTest$/i ) {
+                    $Copyright =~ s/^/# /mg;
+                    $Boilerplate = <<'BOILERPLATE';
+use strict;
+use warnings;
+use utf8;
+
+# Set up the test driver $Self when we ware running as a standalone script.
+use Kernel::System::UnitTest::RegisterDriver;
+
+use vars (qw($Self));
+
+# OTOBO modules
+
+use Kernel::System::UnitTest::Selenium;
+my $Selenium = Kernel::System::UnitTest::Selenium->new( LogExecuteCommandActive => 1 );
+
+$Selenium->RunTest(
+sub {
+
+    my $Helper = $Kernel::OM->Get('Kernel::System::UnitTest::Helper');
+}
+);
+BOILERPLATE
+                }
+                when ( /^SeleniumTest$/i ) {
+                    $Copyright =~ s/^/# /mg;
+                    $Boilerplate = <<'BOILERPLATE';
+use strict;
+use warnings;
+use utf8;
+
+# Set up the test driver $Self when we ware running as a standalone script.
+use Kernel::System::UnitTest::RegisterDriver;
+
+use vars (qw($Self));
+
+$Kernel::OM->ObjectParamAdd(
+'Kernel::System::UnitTest::Helper' => {
+    RestoreDatabase => 1,
+},
+);
+my $Helper = $Kernel::OM->Get('Kernel::System::UnitTest::Helper');
+BOILERPLATE
+                }
+            }
+            open( my $FH, '>', "$Pack/$File" ) or die "Could not open Filehandle to touched File, please check.\n";
+            print "Writing prefillable content to file.\n";
+            print $FH join( "\n", grep { $_ } ( $Copyright, $Boilerplate, $StartCode ) );
+            close $FH;
         }
     }
 
