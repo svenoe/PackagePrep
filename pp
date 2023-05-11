@@ -267,7 +267,6 @@ sub PrepF {
             }
             system "touch $Pack/$File; ln -s $Pack/$File $File";
             my $Template;
-            # TODO Think about default cases for inner branches
             given ( $File ) {
                 when ( /Kernel\// ) {
                     given ( $_ ) {
@@ -280,8 +279,9 @@ sub PrepF {
                         when ( /\/Output\/HTML\/Templates\// ) {
                             $Template = 'Template';
                         }
+                        # use generic pm skeleton as fallback
                         default {
-                            $Template = 'Module';
+                            $Template = 'GenericPM';
                         }
                     }
                 }
@@ -290,7 +290,8 @@ sub PrepF {
                         when ( /\/js\// ) {
                             $Template = 'JS';
                         }
-                        when ( /\/skins\// ) {
+                        # use css as fallback because css comment signs work in js also but not vice versa
+                        default {
                             $Template = 'CSS';
                         }
                     }
@@ -302,9 +303,13 @@ sub PrepF {
                     when ( /\/test\/(?!Selenium)/ ) {
                         $Template = 'UnitTest';
                     }
+                    # use generic pm skeleton as fallback because tests are written in perl
+                    default {
+                        $Template = 'GenericPM';
+                    }
                 }
                 default {
-                    print "Couldn't derive Template Type from Path. Skipping Prefilling.\n";
+                    print "Couldn't derive Template Type from Path '$_'. Skipping Prefilling.\n";
                     return 1;
                 }
             }
@@ -331,7 +336,36 @@ COPYRIGHT
             $Copyright =~ s/<current_year>/$CurrentYear/;
             my $Boilerplate = '';
             my $StartCode = '';
+            # default case shouldn't be necessary because of fallback cases above
             given ( $Template ) {
+                when ( /^GenericPM$/ ) {
+                    $Copyright =~ s/^/# /mg;
+                    $Boilerplate = <<'BOILERPLATE';
+package <package>;
+
+use strict;
+use warnings;
+
+# core modules
+
+# CPAN modules
+
+# OTOBO modules
+BOILERPLATE
+                    $StartCode = <<'STARTCODE';
+sub new {
+my ( $Type, %Param ) = @_;
+
+# allocate new hash for object
+my $Self = {%Param};
+bless( $Self, $Type );
+
+return $Self;
+}
+
+1;
+STARTCODE
+                }
                 when ( /^Module$/i ) {
                     $Copyright =~ s/^/# /mg;
                     $Boilerplate = <<'BOILERPLATE';
