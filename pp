@@ -114,6 +114,7 @@ sub InitF {
 
     my @FileList = `find $Pack -path $Pack/.git -prune -o -type f -print`;
 
+    FILE:
     for my $File ( @FileList ) {
         chomp($File);
         $File =~ s/^\.?\/?$Pack\/+//;
@@ -150,7 +151,6 @@ sub InitF {
 sub PrepF {
     my @Files;
     my $Pack;
-    FILE:
     for my $File ( @_ ) {
         if ( -e $File && -d $File ) {
             if ( $Pack ) {
