@@ -267,45 +267,26 @@ sub PrepF {
             system "touch $Pack/$File; ln -s $Pack/$File $File";
             my $Template;
             given ( $File ) {
-                when ( /Kernel\// ) {
-                    given ( $_ ) {
-                        when ( /\/System\// ) {
-                            $Template = 'System';
-                        }
-                        when ( /\/Config\/Files\/XML\// ) {
-                            $Template = 'Config';
-                        }
-                        when ( /\/Output\/HTML\/Templates\// ) {
-                            $Template = 'Template';
-                        }
-                        # use generic pm skeleton as fallback
-                        default {
-                            $Template = 'GenericPM';
-                        }
-                    }
+                when ( /\.pm$/ ) {
+                    $Template = 'GenericPM';
                 }
-                when ( /var\/httpd\/htdocs\// ) {
-                    given ( $_ ) {
-                        when ( /\/js\// ) {
-                            $Template = 'JS';
-                        }
-                        # use css as fallback because css comment signs work in js also but not vice versa
-                        default {
-                            $Template = 'CSS';
-                        }
-                    }
+                when ( /^Kernel\/Config.+\.xml$/ ) {
+                    $Template = 'Config';
                 }
-                when ( /scripts\// ) {
-                    when ( /\/test\/Selenium\// ) {
-                        $Template = 'SeleniumTest';
-                    }
-                    when ( /\/test\/(?!Selenium)/ ) {
-                        $Template = 'UnitTest';
-                    }
-                    # use generic pm skeleton as fallback because tests are written in perl
-                    default {
-                        $Template = 'GenericPM';
-                    }
+                when ( /^Kernel\/Output\/HTML.+\.tt$/ ) {
+                    $Template = 'Template';
+                }
+                when ( /\.js$/ ) {
+                    $Template = 'JS';
+                }
+                when ( /\.css$/ ) {
+                    $Template = 'CSS';
+                }
+                when ( /\/test\/Selenium\/.+\.t$/ ) {
+                    $Template = 'SeleniumTest';
+                }
+                when ( /\.t$/ ) {
+                    $Template = 'UnitTest';
                 }
                 default {
                     print "Couldn't derive Template Type from Path '$_'. Skipping Prefilling.\n";
