@@ -592,7 +592,13 @@ sub UpdateF {
         die "'$Pack' does not exist.\n";
     }
 
-    my @FileList = `find $Pack/Custom $Pack/var/httpd/htdocs -type f -print`;
+    my @FileList;
+    if ( $Pack =~ /^ITSM/i ) {
+        @FileList = `find $Pack/Kernel $Pack/Custom $Pack/var/httpd/htdocs -type f -print`;
+    }
+    else {
+        @FileList = `find $Pack/Custom $Pack/var/httpd/htdocs -type f -print`;
+    }
 
     FILE:
     for my $File ( @FileList ) {
