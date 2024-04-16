@@ -594,10 +594,10 @@ sub UpdateF {
 
     my @FileList;
     if ( $Pack =~ /^ITSM/i ) {
-        @FileList = `find $Pack/Kernel $Pack/Custom $Pack/var/httpd/htdocs -type f -print`;
+        @FileList = `find $Pack/Kernel $Pack/Custom $Pack/var/httpd/htdocs $Pack/scripts/test -type f -print`;
     }
     else {
-        @FileList = `find $Pack/Custom $Pack/var/httpd/htdocs -type f -print`;
+        @FileList = `find $Pack/Custom $Pack/var/httpd/htdocs $Pack/scripts/test -type f -print`;
     }
 
     FILE:
