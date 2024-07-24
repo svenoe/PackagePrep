@@ -764,7 +764,7 @@ sub SOPM {
     <Version>10.0.0</Version>
     <Framework>10.0.x</Framework>
     <Vendor>Rother OSS GmbH</Vendor>
-    <URL>https://rother-oss.com/</URL>
+    <URL>https://otobo.io/</URL>
     <License>GNU GENERAL PUBLIC LICENSE Version 3, 29 June 2007</License>
     <Description Lang="en">..</Description>
     <Filelist>
