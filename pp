@@ -753,6 +753,20 @@ sub SOPM {
         die "$Pack/$Name.sopm already exists!\n";
     }
 
+    # try to derive framework version
+    my $FrameworkVersion = '10.0.x';
+    my $PackageVersion   = '10.0.0';
+    if ( -e "RELEASE" ) {
+        open my $release, "<", "RELEASE";
+        while (my $line = <$release>) {
+            if ( $line =~ /^VERSION = (?<major>\d{2})\.(?<minor>\d{1})\.(\d{1}|x)$/ ) {
+                $FrameworkVersion = "$+{major}.$+{minor}.x";
+                $PackageVersion   = "$+{major}.$+{minor}.0";
+            }
+        }
+        close $release;
+    }
+
     my @FileList = `find $Pack -path $Pack/.git -prune -o -type f -print | sort`;
 
     open my $sopm, "> $Pack/$Name.sopm" or die "Could not open $Pack/$Name.sopm to write:\n$!\n";
@@ -761,8 +775,8 @@ sub SOPM {
 '<?xml version="1.0" encoding="utf-8" ?>
 <otobo_package version="1.0">
     <Name>'.$Name.'</Name>
-    <Version>10.0.0</Version>
-    <Framework>10.0.x</Framework>
+    <Version>'.$PackageVersion.'</Version>
+    <Framework>'.$FrameworkVersion.'</Framework>
     <Vendor>Rother OSS GmbH</Vendor>
     <URL>https://otobo.io/</URL>
     <License>GNU GENERAL PUBLIC LICENSE Version 3, 29 June 2007</License>
