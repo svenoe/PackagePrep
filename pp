@@ -17,11 +17,11 @@ chomp $Owner;
 $Owner     .= ":$Group";
 my $Program = GetProgram();
 my @RegExesToSkip = (
-	'\.git',
-	'\.vscode',
-	'README',
-	'LICENSE',
-	'\.otobo-ci.yml',
+    '\.git',
+    '\.vscode',
+    'README',
+    'LICENSE',
+    '\.otobo-ci.yml',
 );
 
 if ( !@ARGV ) {
@@ -122,8 +122,9 @@ sub InitF {
 
     FILE:
     for my $File ( @FileList ) {
-	next FILE if grep { $File =~ /$_/ } @RegExesToSkip;
-        chomp($File);
+        next FILE if grep { $File =~ /$_/ } @RegExesToSkip;
+
+        chomp $File;
         $File =~ s/^\.?\/?$Pack\/+//;
 
         if ( -e $File ) {
