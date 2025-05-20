@@ -1,8 +1,7 @@
 #!/usr/bin/perl
+use v5.24;
 use strict;
 use warnings;
-use 5.024;
-no warnings 'experimental';
 
 #+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Settings ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+#
 my $CurrPack = 'directory';
@@ -12,9 +11,9 @@ my $Group = 'www-data';
 
 $CurrPack  =~ s/\/$//;
 my $WD      = `pwd`;
-chomp( $WD );
+chomp $WD;
 my $Owner   = $User || `whoami`;
-chomp( $Owner );
+chomp $Owner;
 $Owner     .= ":$Group";
 my $Program = GetProgram();
 my @RegExesToSkip = (
@@ -29,29 +28,29 @@ if ( !@ARGV ) {
     Usage();
 }
 
-given ( shift @ARGV ) {
-    when (/^-*d$/) {
+for ( shift @ARGV ) {
+    if (/^-*d$/) {
         SetPack( @ARGV );
     }
-    when (/^-*p$/) {
+    elsif (/^-*p$/) {
         PrepF( @ARGV );
     }
-    when (/^-*i$/) {
+    elsif (/^-*i$/) {
         InitF( $ARGV[0] );
     }
-    when (/^-*u$/) {
+    elsif (/^-*u$/) {
         UpdateF( @ARGV );
     }
-    when (/^-*s$/) {
+    elsif (/^-*s$/) {
         SOPM( @ARGV );
     }
-    when (/^-*c$/) {
+    elsif (/^-*c$/) {
         CleanF( $ARGV[0] );
     }
-    when (/^-*h$/) {
+    elsif (/^-*h$/) {
         Usage();
     }
-    default {
+    else {
         if ( -e $_ && -d $_ ) {
             InitF( $_ );
         }
@@ -274,29 +273,29 @@ sub PrepF {
             }
             system "touch $Pack/$File; ln -s $Pack/$File $File";
             my $Template;
-            given ( $File ) {
-                when ( /\.pm$/ ) {
+            for ( $File ) {
+                if ( /\.pm$/ ) {
                     $Template = 'GenericPM';
                 }
-                when ( /^Kernel\/Config.+\.xml$/ ) {
+                elsif ( /^Kernel\/Config.+\.xml$/ ) {
                     $Template = 'Config';
                 }
-                when ( /^Kernel\/Output\/HTML.+\.tt$/ ) {
+                elsif ( /^Kernel\/Output\/HTML.+\.tt$/ ) {
                     $Template = 'Template';
                 }
-                when ( /\.js$/ ) {
+                elsif ( /\.js$/ ) {
                     $Template = 'JS';
                 }
-                when ( /\.css$/ ) {
+                elsif ( /\.css$/ ) {
                     $Template = 'CSS';
                 }
-                when ( /\/test\/Selenium\/.+\.t$/ ) {
+                elsif ( /\/test\/Selenium\/.+\.t$/ ) {
                     $Template = 'SeleniumTest';
                 }
-                when ( /\.t$/ ) {
+                elsif ( /\.t$/ ) {
                     $Template = 'UnitTest';
                 }
-                default {
+                else {
                     print "Couldn't derive Template Type from Path '$_'. Skipping Prefilling.\n";
                     return 1;
                 }
@@ -325,8 +324,8 @@ COPYRIGHT
             my $Boilerplate = '';
             my $StartCode = '';
             # default case shouldn't be necessary because of fallback cases above
-            given ( $Template ) {
-                when ( /^GenericPM$/ ) {
+            for ( $Template ) {
+                if ( /^GenericPM$/ ) {
                     $Copyright =~ s/^/# /mg;
                     $Boilerplate = <<'BOILERPLATE';
 package <package>;
@@ -354,7 +353,7 @@ return $Self;
 1;
 STARTCODE
                 }
-                when ( /^Module$/i ) {
+                elsif ( /^Module$/i ) {
                     $Copyright =~ s/^/# /mg;
                     $Boilerplate = <<'BOILERPLATE';
 package <package>;
@@ -392,7 +391,7 @@ my ( $Self, %Param ) = @_;
 STARTCODE
 
                 }
-                when ( /^System$/i ) {
+                elsif ( /^System$/i ) {
                     $Copyright =~ s/^/# /mg;
                     $Boilerplate = <<'BOILERPLATE';
 package <package>;
@@ -451,7 +450,7 @@ my ( $Self, %Param ) = @_;
 1;
 STARTCODE
                 }
-                when ( /^Config$/i ) {
+                elsif ( /^Config$/i ) {
                     $Copyright = '';
                     $Boilerplate = <<'BOILERPLATE';
 <?xml version="1.0" encoding="utf-8" ?>
@@ -465,10 +464,10 @@ STARTCODE
 </otobo_config>
 BOILERPLATE
                 }
-                when ( /^Template$/i ) {
+                elsif ( /^Template$/i ) {
                     $Copyright =~ s/^/# /mg;
                 }
-                when ( /^JS$/i ) {
+                elsif ( /^JS$/i ) {
                     $Copyright =~ s/^/\/\/ /mg;
                     $Boilerplate = <<'BOILERPLATE';
 "use strict";
@@ -507,7 +506,7 @@ STARTCODE
                     $StartCode =~ s/<current_object>/$CurrentObject/g;
                     $StartCode =~ s/<member>/$Base/;
                 }
-                when ( /^CSS$/i ) {
+                elsif ( /^CSS$/i ) {
                     $Copyright =~ s/^--\n/\/\* /;
                     $Copyright =~ s/--$/\*\//;
                     $Copyright =~ s/--//g;
@@ -519,7 +518,7 @@ STARTCODE
 */
 BOILERPLATE
                 }
-                when ( /^UnitTest$/i ) {
+                elsif ( /^UnitTest$/i ) {
                     $Copyright =~ s/^/# /mg;
                     $Boilerplate = <<'BOILERPLATE';
 use strict;
@@ -544,7 +543,7 @@ sub {
 );
 BOILERPLATE
                 }
-                when ( /^SeleniumTest$/i ) {
+                elsif ( /^SeleniumTest$/i ) {
                     $Copyright =~ s/^/# /mg;
                     $Boilerplate = <<'BOILERPLATE';
 use strict;
@@ -897,8 +896,8 @@ sub PrepareInstalled {
         last INST;
     }
 
-    given ( $Param{Mode} ) {
-        when ( 'Init' ) {
+    for ( $Param{Mode} ) {
+        if ( 'Init' ) {
             if ( !$DeployOK ) {
                 warn "$Structure{Name}{Content} is not installed correctly. Not changing it.\n";
 
@@ -912,7 +911,7 @@ sub PrepareInstalled {
 
             return 1;
         }
-        when ( 'Clean' ) {
+        elsif ( 'Clean' ) {
             if ( $DeployOK ) {
                 print "$Structure{Name}{Content} is already installed correctly. Not changing it.\n";
 
@@ -923,7 +922,7 @@ sub PrepareInstalled {
 
             return $PackageObject->PackageReinstall( String => $OrigPackage );
         }
-        default {
+        else {
             warn "No orders given.\n";
         }
     }
