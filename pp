@@ -5,6 +5,7 @@ use warnings;
 
 #+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Settings ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+#
 my $CurrPack = 'directory';
+my $CurrDiffTool = 'vimdiff';
 my $User = '';              # optional
 my $Group = 'www-data';
 #+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+#
@@ -31,6 +32,9 @@ if ( !@ARGV ) {
 for ( shift @ARGV ) {
     if (/^-*d$/) {
         SetPack( @ARGV );
+    }
+    elsif (/^-*e$/) {
+        SetDiffTool( @ARGV );
     }
     elsif (/^-*p$/) {
         PrepF( @ARGV );
@@ -620,9 +624,9 @@ sub UpdateF {
         # do nothing if the file is still up to date
         next FILE if ( $LastCommit && $LastCommit =~ /$CurrentCommit/ );
 
-        # else vimdiff and change the commit line
-        print "vimdiff $OrigFile $File #and update \$origin\n";
-        system "vimdiff $OrigFile $File; mv $File $File.tmp.shouldnotsee";
+        # else difftool and change the commit line
+        print "$CurrDiffTool $OrigFile $File #and update \$origin\n";
+        system "$CurrDiffTool $OrigFile $File; mv $File $File.tmp.shouldnotsee";
 
         open my $in,  "< $File.tmp.shouldnotsee" or ( warn "Could not open $File.tmp.shouldnotsee to read. Please check!\n" && next FILE );
         open my $out, "> $File" or ( warn "Could not open $File to write. Please check!\n" && next FILE );
@@ -836,6 +840,30 @@ sub SetPack {
     while ( <$orig> ) { print $new $_ }
 
     system "mv $0.tmp_setpack $0; chmod +x $0;";
+}
+
+#+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+#
+
+sub SetDiffTool {
+    if ( !$_[0] ) {
+        $_[0] .= '';
+        die "Please provide a difftool to use. '$_[0]' is invalid.\n";
+    }
+
+    open my $orig, "< $0" or die "Cannot open $0 to read.\n";
+    open my $new, "> $0.tmp_setdifftool" or die "Cannot open $0.tmp_setdifftool to write.\n";
+
+    WHILE:
+    while ( <$orig> ) {
+        if ( /^\s*my\s+\$CurrDiffTool/ ) {
+            print $new "my \$CurrDiffTool = '$_[0]';\n";
+            last WHILE;
+        }
+        print $new $_;
+    }
+    while ( <$orig> ) { print $new $_ }
+
+    system "mv $0.tmp_setdifftool $0; chmod +x $0;";
 }
 
 #+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+#
